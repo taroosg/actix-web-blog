@@ -18,3 +18,8 @@ macro_rules! impl_from_trait {
         }
     };
 }
+
+impl_from_trait!(diesel::r2d2::Error);
+impl_from_trait!(diesel::r2d2::PoolError);
+impl_from_trait!(diesel::result::Error);
+impl_from_trait!(actix_web::error::BlockingError);

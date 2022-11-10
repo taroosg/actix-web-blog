@@ -1,8 +1,29 @@
+use crate::error::ApiError;
 use crate::schema::*;
+use actix_web::web;
+use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use diesel::sqlite::SqliteConnection;
+use serde::{Deserialize, Serialize};
 
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
+
+// InsertableをderiveすることでNewPost型をDBにinsertできる
+#[derive(Deserialize, Insertable)]
+#[diesel(table_name = posts)]
+pub struct NewPost {
+    title: String,
+    body: String,
+}
+
+// DieselがDBのレコードを拾えるようQueryableをderiveする
+#[derive(Serialize, Queryable)]
+pub struct Post {
+    id: i32,
+    title: String,
+    body: String,
+    published: bool,
+}
 
 pub struct Repository {
     pool: DbPool,
@@ -15,6 +36,18 @@ impl Repository {
             .build(manager)
             .expect("Failed to create a pool.");
         Self { pool }
+    }
+
+    pub async fn create_post(&self, new_post: NewPost) -> Result<Post, ApiError> {
+        let mut conn = self.pool.get()?;
+        let post = web::block(move || {
+            // 同期処理なので別スレッドにnew_postを移す（所有権を渡す）
+            diesel::insert_into(posts::table)
+                .values(new_post)
+                .get_result(&mut conn)
+        })
+        .await??;
+        Ok(post)
     }
 }
 
