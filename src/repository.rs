@@ -41,12 +41,12 @@ impl Repository {
     pub async fn create_post(&self, new_post: NewPost) -> Result<Post, ApiError> {
         let mut conn = self.pool.get()?;
         let post = web::block(move || {
-            // 同期処理なので別スレッドにnew_postを移す（所有権を渡す）
             diesel::insert_into(posts::table)
                 .values(new_post)
                 .get_result(&mut conn)
         })
         .await??;
+
         Ok(post)
     }
 }
